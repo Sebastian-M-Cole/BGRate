@@ -98,7 +98,7 @@ def CalcBGRate(table,beamEmittance=10e-09,photonNbins=2000,photonEmax=12.0,photo
     CBRC_page = urlopen(webAddr+conditions).read()
     BGRate = search('<tr><td><b> Endpoint tagged flux sum is ([0-9.E+-]+)',CBRC_page).group(1)
 
-    return float(BGRate)*10^(-9) # Endpoint tagged flux sum as determined using 
+    return float(BGRate)*10**(-9) # Endpoint tagged flux sum as determined using 
                                  # the Hall D Coherent Bremsstrahlung rate calculator.
 
 
