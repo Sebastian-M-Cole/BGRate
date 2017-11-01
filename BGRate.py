@@ -27,6 +27,7 @@
 import argparse
 
 parser = argparse.ArgumentParser(description='Obtain BGRate values using RCDB inputs to build run specific MC')
+parser.add_argument('-p',action='store',dest='pathToRCDB',help='Path to rcdb.sqlite')
 parser.add_argument('--minRun',action='store',dest='minRun',help='Min run number')
 parser.add_argument('--maxRun',action='store',dest='maxRun',help='Max run number')
 parser.add_argument('--beamEmittance',action='store',default=10e-09,dest='beamEmittance',help='Electronbeam emittance: default = 10e-09 m.')
@@ -56,7 +57,7 @@ def BGRate_RCDB_values(minRun,maxRun):
     #RCDB condition list
     valueList = ['event_count','beam_on_current','beam_energy','coherent_peak','collimator_diameter','radiator_type']
 
-    db = rcdb.RCDBProvider("mysql://rcdb@hallddb/rcdb")
+    db = rcdb.RCDBProvider("sqlite:///"+parsedArgs.pathToRCDB)
     table = db.select_runs("@is_production and @status_approved",int(minRun),int(maxRun)).get_values(valueList,True)
 
     return table # Table of conditions from list for 
@@ -93,13 +94,12 @@ def CalcBGRate(table,beamEmittance=10e-09,photonNbins=2000,photonEmax=12.0,photo
     webAddr = 'http://zeus.phys.uconn.edu/halld/cobrems/ratetool.cgi'
 
     conditions = '?' + beamEnergyStr + beamCurrentStr + beamEmittanceStr + radThicknessStr + photonEpeakStr + photonNbinsStr + photonEmaxStr + photonEminStr + collimDistanceStr + collimDiamStr + peakElowStr + peakEhighStr + backElowStr + backEhighStr + endpElowStr + endpEhighStr + finalStr
-    print(webAddr+conditions)
 
-    #CBRC_page = urllib2.urlopen(webAddr+conditions).read()
-    #BGRate = search('<tr><td><b> Endpoint tagged flux sum is ([0-9.E+-]+)',CBRC_page).group(1)
+    CBRC_page = urlopen(webAddr+conditions).read()
+    BGRate = search('<tr><td><b> Endpoint tagged flux sum is ([0-9.E+-]+)',CBRC_page).group(1)
 
-    #return BGRate # Endpoint tagged flux sum as determined using 
-                   # the Hall D Coherent Bremsstrahlung rate calculator.
+    return float(BGRate)*10^(-9) # Endpoint tagged flux sum as determined using 
+                                 # the Hall D Coherent Bremsstrahlung rate calculator.
 
 
 # Constructs condition csv with run_number, event_count, beam_on_current, 
@@ -110,10 +110,9 @@ with open(fileName,'w') as f:
     f.write('run_number,event_count,beam_on_current,beam_energy,coherent_peak,collimator_diameter,radiator_type,BGRate\n')
     for run in BGRate_RCDB_values(parsedArgs.minRun,parsedArgs.maxRun):
         BGRate = CalcBGRate(run,parsedArgs.beamEmittance,parsedArgs.photonNbins,parsedArgs.photonEmax,parsedArgs.photonEmin,parsedArgs.collimDistance,parsedArgs.peakElow,parsedArgs.peakEhigh,parsedArgs.backElow,parsedArgs.backEhigh,parsedArgs.endpElow,parsedArgs.endpEhigh)
-        BGRate = '1'
         runToWrite = ''
         for val in run:
             runToWrite += str(val) + ','
-        f.write(runToWrite+BGRate+'\n')
+        f.write(runToWrite+'%g'%BGRate+'\n')
 
 
